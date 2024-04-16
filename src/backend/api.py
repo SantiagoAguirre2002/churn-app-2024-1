@@ -21,7 +21,6 @@ class FeaturesModel(BaseModel):
     PhoneService_Yes: bool
     MultipleLines_No: bool
     MultipleLines_No_phone: bool
-    service: bool
     MultipleLines_Yes: bool
     InternetService_DSL: bool
     InternetService_Fiber_optic: bool
@@ -73,17 +72,20 @@ def get_api_key(api_key_query: str = Security(api_key_query)):
 @app.on_event("startup")
 def load_model():
 
-    global model1
+    global logged_model
+    import mlflow
+    mlflow.set_tracking_uri('https://dagshub.com/SantiagoAguirre2002/churn-app-2024-1.mlflow')
+    logged_model = 'runs:/564ea0ecbc7b4a428244b2f27a2f61b0/logistic_classifier'
 
-    with open("../../model/model.pickle", "rb") as openfile:
-        model1 = pickle.load(openfile)
+    # Load model as a PyFuncModel.
+    logged_model = mlflow.pyfunc.load_model(logged_model)
 
 @app.get("/api/v1/classify")
 def classify(features_model: FeaturesModel, api_key : APIKey=Depends(get_api_key)):
 
-    features = [val for val in features_model.__dict__.values()][:-1]
+    features= [val for val in features_model.__dict__.values()]
+    prediction = logged_model.predict([features])
 
-    prediction = model1.predict([features])
 
     label_dict= {
         0: "Not churn",
